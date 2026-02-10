@@ -24,3 +24,4 @@ utoipa-axum = "0.2.0"
 utoipa = "5.4.0"
 utoipa-swagger-ui = { version = "9.0.2", features = ["axum"] }
 serde_with = "3.16.1"
+validator = {version = "0.20.0", features = ["derive"]}

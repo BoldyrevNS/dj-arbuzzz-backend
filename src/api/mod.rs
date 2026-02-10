@@ -5,7 +5,10 @@ use std::sync::Arc;
 
 use crate::{
     config::AppConfig,
-    infrastucture::{cache::client::Cache, database::pool::DbPool},
+    infrastucture::{
+        cache::client::Cache, database::pool::DbPool,
+        repositories::users_repository::UsersRepository,
+    },
     service::{
         auth::sign_up_service::SignUpService, otp_service::OTPService, smtp_service::SMTPService,
     },
@@ -27,14 +30,18 @@ impl AppState {
         let smtp_service = Arc::new(SMTPService::new(&config));
         let cache = Arc::new(Cache::new(&config.redis_config.url));
         let db_pool = Arc::new(db_pool);
+
+        let users_repository = Arc::new(UsersRepository::new(db_pool.clone()));
+
         let sign_up_service = Arc::new(SignUpService::new(
-            db_pool.clone(),
             cache.clone(),
             otp_service.clone(),
             smtp_service.clone(),
+            users_repository.clone(),
         ));
 
         let services = Services { sign_up_service };
+
         AppState {
             db_pool,
             config,

@@ -1,5 +1,4 @@
 use std::{
-    hash::{DefaultHasher, Hash, Hasher},
     sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -13,9 +12,8 @@ use crate::{
     },
     error::app_error::{AppError, ErrorCode},
     infrastucture::{
-        cache::client::Cache,
-        database::{models::NewUser, pool::DbPool},
-        repositories::users_repository::{create_user, get_user_by_email},
+        cache::client::Cache, database::models::NewUser,
+        repositories::users_repository::UsersRepository,
     },
 };
 use argon2::{Argon2, PasswordHasher, password_hash::SaltString};
@@ -31,7 +29,7 @@ use redis::AsyncCommands;
 
 #[derive(Serialize, Deserialize)]
 struct SignUpOtpParams {
-    otp_value: u32,
+    otp_value: String,
     send_timestamp_seconds: u64,
     hash: String,
     verified: bool,
@@ -50,24 +48,24 @@ impl CacheKey<'_> {
 }
 
 pub struct SignUpService {
-    db_pool: Arc<DbPool>,
     cache: Arc<Cache>,
     otp_service: Arc<OTPService>,
     smtp_service: Arc<SMTPService>,
+    users_repository: Arc<UsersRepository>,
 }
 
 impl SignUpService {
     pub fn new(
-        db_pool: Arc<DbPool>,
         cache: Arc<Cache>,
         otp_service: Arc<OTPService>,
         smtp_service: Arc<SMTPService>,
+        users_repository: Arc<UsersRepository>,
     ) -> Self {
         SignUpService {
-            db_pool,
             cache,
             otp_service,
             smtp_service,
+            users_repository,
         }
     }
 
@@ -75,12 +73,16 @@ impl SignUpService {
         &self,
         payload: SignUpStartRequest,
     ) -> AppResult<SignUpStartResponse> {
-        match get_user_by_email(self.db_pool.clone(), &payload.email).await {
+        match self
+            .users_repository
+            .get_user_by_email(&payload.email)
+            .await
+        {
             Ok(_) => {
-                (return Err(AppError::BadRequest(
+                return Err(AppError::BadRequest(
                     "Пользователь с таким email уже зарегистрирован".to_string(),
                     Some(ErrorCode::UserAlreadyExists),
-                )))
+                ));
             }
             Err(_) => (),
         }
@@ -113,7 +115,7 @@ impl SignUpService {
         self.cache_sign_up_data(
             &payload.email,
             &SignUpOtpParams {
-                otp_value: otp,
+                otp_value: otp.to_string(),
                 send_timestamp_seconds: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
@@ -213,7 +215,7 @@ impl SignUpService {
         self.cache_sign_up_data(
             &payload.email,
             &SignUpOtpParams {
-                otp_value: otp,
+                otp_value: otp.to_string(),
                 send_timestamp_seconds: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
@@ -257,15 +259,13 @@ impl SignUpService {
             .unwrap()
             .to_string();
 
-        create_user(
-            self.db_pool.clone(),
-            &NewUser {
+        self.users_repository
+            .create_user(&NewUser {
                 email: payload.email,
                 username: payload.username,
                 password: hashed_password,
-            },
-        )
-        .await?;
+            })
+            .await?;
         Ok(())
     }
 
@@ -297,7 +297,7 @@ impl SignUpService {
     async fn get_cached_sign_up_data(&self, email: &str) -> AppResult<SignUpOtpParams> {
         let mut con = self.cache.get_async_conn().await?;
         let key = CacheKey::SignUpOTP(email).to_string();
-        let otp_value: u32 = con.hget(&key, "otp_value").await?;
+        let otp_value: String = con.hget(&key, "otp_value").await?;
         let send_timestamp_seconds: u64 = con.hget(&key, "send_timestamp_seconds").await?;
         let hash: String = con.hget(&key, "hash").await?;
         let verified: u8 = con.hget(&key, "verified").await?;

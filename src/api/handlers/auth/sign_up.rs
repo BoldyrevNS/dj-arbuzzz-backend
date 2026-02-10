@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{Json, extract::State};
+use axum::extract::State;
 
 use crate::{
     AppState,
@@ -9,7 +9,7 @@ use crate::{
             ResendOTPRequest, SignUpCompleteRequest, SignUpStartRequest, VerifyOTPRequest,
         },
         response::{
-            ApiResponse, ApiResult,
+            ApiResponse, ApiResult, ValidatedJSON,
             auth::sign_up::{ResendOTPResponse, SignUpStartResponse},
         },
     },
@@ -28,7 +28,7 @@ use crate::{
     )]
 pub async fn start(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<SignUpStartRequest>,
+    ValidatedJSON(payload): ValidatedJSON<SignUpStartRequest>,
 ) -> ApiResult<SignUpStartResponse> {
     let res = state
         .services
@@ -51,7 +51,7 @@ pub async fn start(
     )]
 pub async fn verify(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<VerifyOTPRequest>,
+    ValidatedJSON(payload): ValidatedJSON<VerifyOTPRequest>,
 ) -> ApiResult<()> {
     state.services.sign_up_service.verify_otp(payload).await?;
     Ok(ApiResponse::OK(()))
@@ -70,7 +70,7 @@ pub async fn verify(
     )]
 pub async fn resend(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<ResendOTPRequest>,
+    ValidatedJSON(payload): ValidatedJSON<ResendOTPRequest>,
 ) -> ApiResult<ResendOTPResponse> {
     let res = state.services.sign_up_service.resend_otp(payload).await?;
     Ok(ApiResponse::OK(res))
@@ -89,7 +89,7 @@ pub async fn resend(
     )]
 pub async fn complete(
     State(state): State<Arc<AppState>>,
-    Json(payload): Json<SignUpCompleteRequest>,
+    ValidatedJSON(payload): ValidatedJSON<SignUpCompleteRequest>,
 ) -> ApiResult<()> {
     state
         .services
