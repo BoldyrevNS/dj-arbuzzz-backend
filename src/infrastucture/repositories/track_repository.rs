@@ -1,4 +1,4 @@
-use std::{ops::Add, sync::Arc};
+use std::sync::Arc;
 
 use crate::{
     error::app_error::AppResult,
@@ -10,6 +10,7 @@ use crate::{
 
 use diesel::prelude::*;
 use diesel_async::{AsyncConnection, RunQueryDsl};
+use diesel::OptionalExtension;
 
 pub struct TrackRepository {
     db_pool: Arc<DbPool>,
@@ -99,6 +100,26 @@ impl TrackRepository {
             .first::<Track>(&mut con)
             .await?;
 
+        Ok(track)
+    }
+
+    pub async fn find_random_track(&self) -> AppResult<Track> {
+        use diesel::sql_query;
+        let mut con = self.db_pool.get().await?;
+        let track = sql_query(
+            "SELECT id, song_id, owner_id, download_url, title, artist, \
+             duration_sec, likes_count, listens_count \
+             FROM tracks ORDER BY RANDOM() LIMIT 1",
+        )
+        .get_result::<Track>(&mut con)
+        .await
+        .optional()?
+        .ok_or_else(|| {
+            crate::error::app_error::AppError::NotFound(
+                "No tracks in database".to_string(),
+                None,
+            )
+        })?;
         Ok(track)
     }
 }

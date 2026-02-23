@@ -1,16 +1,14 @@
 use std::sync::Arc;
 
+use tokio::sync::Notify;
+
 use crate::{
     dto::{request::track::UserSelectTrackRequest, response::track::SearchTrackResponse},
     error::app_error::{AppError, AppResult},
     infrastucture::{
-        database::models::{NewTrack, NewUserTrack},
-        repositories::{
-            track_repository::TrackRepository,
-            user_track_repository::{self, UserTrackRepository},
-        },
+        database::models::NewTrack,
+        repositories::track_repository::TrackRepository,
     },
-    schema::tracks::owner_id,
     service::playlist_service::{PlaylistItem, PlaylistService},
 };
 
@@ -43,6 +41,7 @@ pub struct TrackService {
     track_repository: Arc<TrackRepository>,
     playlist_service: Arc<PlaylistService>,
     config: Arc<crate::config::AppConfig>,
+    queue_notify: Arc<Notify>,
 }
 
 impl TrackService {
@@ -50,11 +49,13 @@ impl TrackService {
         track_repository: Arc<TrackRepository>,
         playlist_service: Arc<PlaylistService>,
         config: Arc<crate::config::AppConfig>,
+        queue_notify: Arc<Notify>,
     ) -> Self {
         TrackService {
             track_repository,
             playlist_service,
             config,
+            queue_notify,
         }
     }
 
@@ -118,6 +119,7 @@ impl TrackService {
                 download_url: track.download_url,
             })
             .await?;
+        self.queue_notify.notify_one();
         Ok(())
     }
 

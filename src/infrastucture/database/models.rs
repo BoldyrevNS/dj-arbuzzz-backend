@@ -28,7 +28,7 @@ pub struct NewUser {
     pub email: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, AsChangeset)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, QueryableByName, Selectable, AsChangeset)]
 #[diesel(table_name = crate::schema::tracks)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Track {

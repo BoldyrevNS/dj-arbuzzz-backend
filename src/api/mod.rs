@@ -3,6 +3,8 @@ pub mod routes;
 
 use std::sync::Arc;
 
+use tokio::sync::Notify;
+
 use crate::{
     config::AppConfig,
     infrastucture::{
@@ -16,7 +18,6 @@ use crate::{
             sign_up_service::SignUpService,
         },
         otp_service::OTPService,
-        player_service::PlayerService,
         playlist_service::PlaylistService,
         radio_service::RadioService,
         smtp_service::SMTPService,
@@ -73,17 +74,21 @@ impl AppState {
             token_service.clone(),
         ));
 
+        // Shared notify used to interrupt auto-play when a track is queued.
+        let queue_notify = Arc::new(Notify::new());
+
         let track_service = Arc::new(TrackService::new(
             track_repository.clone(),
             playlist_service.clone(),
             config.clone(),
+            queue_notify.clone(),
         ));
 
-        let player_service = Arc::new(PlayerService::new(config.clone(), playlist_service.clone()));
         let radio_service = RadioService::new(
             playlist_service.clone(),
-            player_service.clone(),
+            track_repository.clone(),
             config.clone(),
+            queue_notify,
         );
 
         let auth_service = Arc::new(AuthService::new(cache.clone(), users_repository.clone()));
@@ -104,3 +109,4 @@ impl AppState {
         }
     }
 }
+
