@@ -2,6 +2,7 @@ mod database;
 mod redis;
 mod secret;
 mod smtp;
+mod songs;
 
 #[derive(Clone, Debug)]
 pub enum AppEnvironment {
@@ -18,6 +19,7 @@ pub struct AppConfig {
     pub music_api_token: String,
     pub smtp_config: smtp::SMTPConfig,
     pub secret_config: secret::SecretConfig,
+    pub songs_config: songs::SongsConfig,
 }
 
 impl AppConfig {
@@ -31,6 +33,7 @@ impl AppConfig {
             music_api_token: Self::get_music_api_token(),
             smtp_config: smtp::SMTPConfig::new(),
             secret_config: secret::SecretConfig::new(),
+            songs_config: songs::SongsConfig::new(),
         }
     }
 

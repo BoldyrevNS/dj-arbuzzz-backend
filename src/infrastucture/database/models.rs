@@ -28,7 +28,7 @@ pub struct NewUser {
     pub email: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable)]
+#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable, AsChangeset)]
 #[diesel(table_name = crate::schema::tracks)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct Track {
@@ -40,6 +40,7 @@ pub struct Track {
     pub artist: String,
     pub duration_sec: i32,
     pub likes_count: i32,
+    pub listens_count: i32,
 }
 
 #[derive(Debug, Insertable)]
@@ -52,6 +53,7 @@ pub struct NewTrack {
     pub artist: String,
     pub duration_sec: i32,
     pub likes_count: Option<i32>,
+    pub listens_count: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Queryable, Selectable)]

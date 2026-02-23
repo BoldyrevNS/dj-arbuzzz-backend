@@ -8,6 +8,7 @@ use tower_cookies::{Cookie, Cookies};
 
 const COOKIE_LIFETIME_SEC: i64 = 60 * 60 * 24 * 7;
 
+use crate::infrastucture::cache::keys::AppCacheKey;
 use crate::{
     dto::request::auth::auth::SignInRequest,
     error::app_error::{AppError, AppResult, ErrorCode},
@@ -19,18 +20,6 @@ pub struct CachedSession {
     pub created_at: i64,
     pub last_updated: i64,
     pub user_id: i32,
-}
-
-pub enum CacheKey {
-    SESSION(String),
-}
-
-impl CacheKey {
-    pub fn build_key(&self) -> String {
-        match self {
-            CacheKey::SESSION(session_id) => format!("AUTH_SESSION_{}", session_id),
-        }
-    }
 }
 
 pub struct AuthService {
@@ -86,7 +75,7 @@ impl AuthService {
             .collect();
 
         let mut cache_con = self.cache.get_async_conn().await?;
-        let cache_key = CacheKey::SESSION(session_id.clone()).build_key();
+        let cache_key = AppCacheKey::SESSION(&session_id).build_key();
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -119,7 +108,7 @@ impl AuthService {
 
     pub async fn delete_session(&self, cookies: Cookies, sid: String) -> AppResult<()> {
         let mut con = self.cache.get_async_conn().await?;
-        let key = CacheKey::SESSION(sid.clone()).build_key();
+        let key = AppCacheKey::SESSION(&sid).build_key();
 
         match con.del::<_, ()>(key).await {
             Ok(_) => (),
@@ -137,7 +126,7 @@ impl AuthService {
 
     pub async fn get_session_from_cache_and_update(&self, sid: String) -> AppResult<CachedSession> {
         let mut con = self.cache.get_async_conn().await?;
-        let key = CacheKey::SESSION(sid.clone()).build_key();
+        let key = AppCacheKey::SESSION(&sid).build_key();
         let created_at: i64 = con.hget(&key, "created_at").await?;
         let last_updated: i64 = con.hget(&key, "last_updated").await?;
         let user_id = con.hget(&key, "user_id").await?;

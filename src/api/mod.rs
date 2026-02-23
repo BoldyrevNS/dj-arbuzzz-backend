@@ -16,9 +16,10 @@ use crate::{
             sign_up_service::SignUpService,
         },
         otp_service::OTPService,
+        playlist_service::PlaylistService,
         smtp_service::SMTPService,
         token_service::TokenService,
-        track::track_service::TrackService,
+        track_service::TrackService,
     },
 };
 
@@ -27,6 +28,7 @@ pub struct Services {
     pub restore_service: Arc<RestoreService>,
     pub auth_service: Arc<AuthService>,
     pub track_service: Arc<TrackService>,
+    pub playlist_service: Arc<PlaylistService>,
 }
 
 pub struct AppState {
@@ -50,6 +52,8 @@ impl AppState {
         let users_repository = Arc::new(UsersRepository::new(db_pool.clone()));
         let track_repository = Arc::new(TrackRepository::new(db_pool.clone()));
 
+        let playlist_service = Arc::new(PlaylistService::new(cache.clone()));
+
         let sign_up_service = Arc::new(SignUpService::new(
             cache.clone(),
             otp_service.clone(),
@@ -66,7 +70,11 @@ impl AppState {
             token_service.clone(),
         ));
 
-        let track_service = Arc::new(TrackService::new(track_repository.clone(), config.clone()));
+        let track_service = Arc::new(TrackService::new(
+            track_repository.clone(),
+            playlist_service.clone(),
+            config.clone(),
+        ));
 
         let auth_service = Arc::new(AuthService::new(cache.clone(), users_repository.clone()));
 
@@ -75,6 +83,7 @@ impl AppState {
             restore_service,
             auth_service,
             track_service,
+            playlist_service,
         };
 
         AppState {

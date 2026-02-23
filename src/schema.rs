@@ -16,6 +16,7 @@ diesel::table! {
         artist -> Varchar,
         duration_sec -> Int4,
         likes_count -> Int4,
+        listens_count -> Int4,
     }
 }
 

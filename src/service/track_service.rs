@@ -11,6 +11,7 @@ use crate::{
         },
     },
     schema::tracks::owner_id,
+    service::playlist_service::{PlaylistItem, PlaylistService},
 };
 
 #[derive(serde::Deserialize, Debug, Clone)]
@@ -40,16 +41,19 @@ struct SearchTrackByIdInApiResponse {
 
 pub struct TrackService {
     track_repository: Arc<TrackRepository>,
+    playlist_service: Arc<PlaylistService>,
     config: Arc<crate::config::AppConfig>,
 }
 
 impl TrackService {
     pub fn new(
         track_repository: Arc<TrackRepository>,
+        playlist_service: Arc<PlaylistService>,
         config: Arc<crate::config::AppConfig>,
     ) -> Self {
         TrackService {
             track_repository,
+            playlist_service,
             config,
         }
     }
@@ -87,7 +91,8 @@ impl TrackService {
             ));
         }
         let track = tracks.response[0].clone();
-        self.track_repository
+        let (track, _) = self
+            .track_repository
             .create_track_with_user_track(
                 &NewTrack {
                     song_id: track.id,
@@ -97,9 +102,18 @@ impl TrackService {
                     duration_sec: track.duration,
                     download_url: track.url,
                     likes_count: None,
+                    listens_count: None,
                 },
                 user_id,
             )
+            .await?;
+        self.playlist_service
+            .add_new_track(PlaylistItem {
+                id: track.id,
+                artist: track.artist,
+                title: track.title,
+                duration_sec: track.duration_sec,
+            })
             .await?;
         Ok(())
     }

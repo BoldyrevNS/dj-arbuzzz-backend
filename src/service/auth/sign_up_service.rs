@@ -12,7 +12,8 @@ use crate::{
     },
     error::app_error::{AppError, ErrorCode},
     infrastucture::{
-        cache::client::Cache, database::models::NewUser,
+        cache::{client::Cache, keys::AppCacheKey},
+        database::models::NewUser,
         repositories::users_repository::UsersRepository,
     },
     service::token_service::{Token, TokenService, TokenType},
@@ -58,18 +59,6 @@ struct CachedSignUpOtpParams {
     send_timestamp_seconds: u64,
     verified: bool,
     token: String,
-}
-
-enum CacheKey<'a> {
-    SignUpOTP(&'a str),
-}
-
-impl CacheKey<'_> {
-    fn to_string(&self) -> String {
-        match self {
-            CacheKey::SignUpOTP(value) => format!("sign_up_otp:{}", value),
-        }
-    }
 }
 
 pub struct SignUpService {
@@ -238,7 +227,7 @@ impl SignUpService {
 
     async fn cache_sign_up_data(&self, email: &str, data: &CachedSignUpOtpParams) -> AppResult<()> {
         let mut con = self.cache.get_async_conn().await?;
-        let key = CacheKey::SignUpOTP(email).to_string();
+        let key = AppCacheKey::SIGN_UP_OTP(email).build_key();
         let _: () = con
             .hset_multiple(
                 &key,
@@ -259,7 +248,7 @@ impl SignUpService {
 
     async fn get_cached_data(&self, email: &str) -> AppResult<CachedSignUpOtpParams> {
         let mut con = self.cache.get_async_conn().await?;
-        let key = CacheKey::SignUpOTP(email).to_string();
+        let key = AppCacheKey::SIGN_UP_OTP(email).build_key();
         let otp_value: String = con.hget(&key, "otp_value").await?;
         let send_timestamp_seconds: u64 = con.hget(&key, "send_timestamp_seconds").await?;
         let token: String = con.hget(&key, "token").await?;
@@ -284,14 +273,14 @@ impl SignUpService {
 
     async fn verify_otp_and_update_cache(&self, email: &str) -> AppResult<()> {
         let mut con = self.cache.get_async_conn().await?;
-        let key = CacheKey::SignUpOTP(email).to_string();
+        let key = AppCacheKey::SIGN_UP_OTP(email).build_key();
         let _: () = con.hset(&key, "verified", "true").await?;
         Ok(())
     }
 
     async fn clear_cache(&self, email: &str) -> AppResult<()> {
         let mut con = self.cache.get_async_conn().await?;
-        let key = CacheKey::SignUpOTP(email).to_string();
+        let key = AppCacheKey::SIGN_UP_OTP(email).build_key();
         match con.del::<_, ()>(key).await {
             Ok(_) => (),
             Err(_) => (),

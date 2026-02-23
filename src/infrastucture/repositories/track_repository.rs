@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{ops::Add, sync::Arc};
 
 use crate::{
     error::app_error::AppResult,
@@ -51,7 +51,14 @@ impl TrackRepository {
                         .first::<Track>(tx_conn)
                         .await
                     {
-                        Ok(existing) => existing,
+                        Ok(found_track) => {
+                            diesel::update(tracks)
+                                .filter(owner_id.eq(new_track_ref.owner_id))
+                                .filter(song_id.eq(new_track_ref.song_id))
+                                .set(listens_count.eq(found_track.listens_count + 1))
+                                .get_result::<Track>(tx_conn)
+                                .await?
+                        }
                         Err(diesel::result::Error::NotFound) => {
                             diesel::insert_into(tracks)
                                 .values(new_track_ref)

@@ -7,6 +7,7 @@ CREATE TABLE tracks (
   artist VARCHAR NOT NULL,
   duration_sec INT NOT NULL DEFAULT 0,
   likes_count INT NOT NULL DEFAULT 0,
+  listens_count INT NOT NULL DEFAULT 1,
   UNIQUE (song_id, owner_id)
 );
 

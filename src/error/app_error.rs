@@ -131,3 +131,21 @@ impl From<jsonwebtoken::errors::Error> for AppError {
         AppError::Internal(anyhow::anyhow!("JWT error: {}", value))
     }
 }
+
+impl From<serde_json::Error> for AppError {
+    fn from(value: serde_json::Error) -> Self {
+        AppError::Internal(anyhow::anyhow!("Serialization error: {}", value))
+    }
+}
+
+impl From<std::io::Error> for AppError {
+    fn from(value: std::io::Error) -> Self {
+        AppError::Internal(anyhow::anyhow!("IO error: {}", value))
+    }
+}
+
+impl From<reqwest::Error> for AppError {
+    fn from(value: reqwest::Error) -> Self {
+        AppError::Internal(anyhow::anyhow!("HTTP request error: {}", value))
+    }
+}
