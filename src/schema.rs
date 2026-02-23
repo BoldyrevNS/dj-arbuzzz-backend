@@ -9,31 +9,31 @@ pub mod sql_types {
 diesel::table! {
     tracks (id) {
         id -> Int4,
-        track_id -> Int4,
+        song_id -> Int4,
         owner_id -> Int4,
         download_url -> Varchar,
         title -> Varchar,
         artist -> Varchar,
-        duration_sec -> Nullable<Int4>,
-        likes_count -> Nullable<Int4>,
+        duration_sec -> Int4,
+        likes_count -> Int4,
     }
 }
 
 diesel::table! {
     user_likes (id) {
         id -> Int4,
-        user_id -> Nullable<Int4>,
-        track_id -> Nullable<Int4>,
-        liked_at -> Nullable<Timestamp>,
+        user_id -> Int4,
+        track_id -> Int4,
+        liked_at -> Timestamp,
     }
 }
 
 diesel::table! {
     user_tracks (id) {
         id -> Int4,
-        user_id -> Nullable<Int4>,
-        track_id -> Nullable<Int4>,
-        added_at -> Nullable<Timestamp>,
+        user_id -> Int4,
+        track_id -> Int4,
+        added_at -> Timestamp,
     }
 }
 

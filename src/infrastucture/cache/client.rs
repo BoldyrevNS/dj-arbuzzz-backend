@@ -1,5 +1,6 @@
 use crate::error::app_error::AppResult;
 
+#[derive(Debug, Clone)]
 pub struct Cache {
     pub client: redis::Client,
 }

@@ -98,21 +98,4 @@ impl UsersRepository {
 
         Ok(user)
     }
-
-    pub async fn change_user_password(&self, email: String, new_password: String) -> AppResult<()> {
-        use crate::schema::users::dsl::*;
-        let mut conn = self.db_pool.get().await?;
-        let result = diesel::update(users.filter(email.eq(email)))
-            .set(password.eq(new_password))
-            .execute(&mut conn)
-            .await;
-
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(AppError::Database(
-                format!("Failed to change password: {}", e),
-                None,
-            )),
-        }
-    }
 }

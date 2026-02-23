@@ -6,8 +6,9 @@ use std::sync::Arc;
 use crate::{
     config::AppConfig,
     infrastucture::{
-        cache::client::Cache, database::pool::DbPool,
-        repositories::users_repository::UsersRepository,
+        cache::client::Cache,
+        database::pool::DbPool,
+        repositories::{track_repository::TrackRepository, users_repository::UsersRepository},
     },
     service::{
         auth::{
@@ -17,6 +18,7 @@ use crate::{
         otp_service::OTPService,
         smtp_service::SMTPService,
         token_service::TokenService,
+        track::track_service::TrackService,
     },
 };
 
@@ -24,6 +26,7 @@ pub struct Services {
     pub sign_up_service: Arc<SignUpService>,
     pub restore_service: Arc<RestoreService>,
     pub auth_service: Arc<AuthService>,
+    pub track_service: Arc<TrackService>,
 }
 
 pub struct AppState {
@@ -35,13 +38,17 @@ pub struct AppState {
 impl AppState {
     pub fn new(config: AppConfig, db_pool: DbPool) -> Self {
         let config = Arc::new(config);
+
+        // Shared services
         let otp_service = Arc::new(OTPService::new());
         let smtp_service = Arc::new(SMTPService::new(&config));
+        let token_service = Arc::new(TokenService::new(config.clone()));
+
         let cache = Arc::new(Cache::new(&config.redis_config.url));
         let db_pool = Arc::new(db_pool);
 
         let users_repository = Arc::new(UsersRepository::new(db_pool.clone()));
-        let token_service = Arc::new(TokenService::new(config.clone()));
+        let track_repository = Arc::new(TrackRepository::new(db_pool.clone()));
 
         let sign_up_service = Arc::new(SignUpService::new(
             cache.clone(),
@@ -59,12 +66,15 @@ impl AppState {
             token_service.clone(),
         ));
 
+        let track_service = Arc::new(TrackService::new(track_repository.clone(), config.clone()));
+
         let auth_service = Arc::new(AuthService::new(cache.clone(), users_repository.clone()));
 
         let services = Services {
             sign_up_service,
             restore_service,
             auth_service,
+            track_service,
         };
 
         AppState {

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use argon2::{Argon2, PasswordVerifier, password_hash};
 use rand::distributions::Alphanumeric;
 use rand::{Rng, thread_rng};
-use redis::AsyncTypedCommands;
+use redis::AsyncCommands;
 use tower_cookies::{Cookie, Cookies};
 
 const COOKIE_LIFETIME_SEC: i64 = 60 * 60 * 24 * 7;
@@ -14,9 +14,11 @@ use crate::{
     infrastucture::{cache::client::Cache, repositories::users_repository::UsersRepository},
 };
 
-pub struct CookieData {
-    session_id: String,
-    username: String,
+pub struct CachedSession {
+    pub session_id: String,
+    pub created_at: i64,
+    pub last_updated: i64,
+    pub user_id: i32,
 }
 
 pub enum CacheKey {
@@ -24,7 +26,7 @@ pub enum CacheKey {
 }
 
 impl CacheKey {
-    fn build_key(&self) -> String {
+    pub fn build_key(&self) -> String {
         match self {
             CacheKey::SESSION(session_id) => format!("AUTH_SESSION_{}", session_id),
         }
@@ -103,7 +105,9 @@ impl AuthService {
             )
             .await?;
 
-        let _ = cache_con.expire(&cache_key, COOKIE_LIFETIME_SEC).await?;
+        let _ = cache_con
+            .expire::<_, ()>(&cache_key, COOKIE_LIFETIME_SEC)
+            .await?;
 
         let mut cookie = Cookie::new("x-authenticated", session_id);
         cookie.set_secure(true);
@@ -111,5 +115,64 @@ impl AuthService {
         cookie.set_path("/");
         cookies.add(cookie);
         Ok(())
+    }
+
+    pub async fn delete_session(&self, cookies: Cookies, sid: String) -> AppResult<()> {
+        let mut con = self.cache.get_async_conn().await?;
+        let key = CacheKey::SESSION(sid.clone()).build_key();
+
+        match con.del::<_, ()>(key).await {
+            Ok(_) => (),
+            Err(_) => (),
+        };
+
+        let mut cookie = Cookie::new("x-authenticated", sid);
+        cookie.set_secure(true);
+        cookie.set_http_only(true);
+        cookie.set_path("/");
+        cookies.remove(cookie);
+
+        Ok(())
+    }
+
+    pub async fn get_session_from_cache_and_update(&self, sid: String) -> AppResult<CachedSession> {
+        let mut con = self.cache.get_async_conn().await?;
+        let key = CacheKey::SESSION(sid.clone()).build_key();
+        let created_at: i64 = con.hget(&key, "created_at").await?;
+        let last_updated: i64 = con.hget(&key, "last_updated").await?;
+        let user_id = con.hget(&key, "user_id").await?;
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs()
+            .to_string();
+
+        let _: () = con
+            .hset(&key, "last_updated", timestamp.to_string())
+            .await?;
+
+        let _ = con.expire::<_, ()>(&key, COOKIE_LIFETIME_SEC).await?;
+        Ok(CachedSession {
+            session_id: sid,
+            created_at,
+            last_updated,
+            user_id,
+        })
+    }
+
+    pub fn get_session_id_from_req<Body>(
+        &self,
+        req: &axum::http::Request<Body>,
+    ) -> AppResult<String> {
+        let cookies = req
+            .extensions()
+            .get::<tower_cookies::Cookies>()
+            .ok_or_else(|| AppError::Unauthorized("Missing cookies".to_string(), None))?;
+        let sid = cookies
+            .get("x-authenticated")
+            .map(|c| c.value().to_string())
+            .ok_or_else(|| AppError::Unauthorized("Missing session cookie".to_string(), None))?;
+        Ok(sid)
     }
 }

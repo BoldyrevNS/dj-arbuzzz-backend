@@ -19,6 +19,7 @@ pub struct Claims {
     otp: String,
     exp: u64,
 }
+
 pub struct OTPService {}
 
 impl OTPService {

@@ -11,6 +11,8 @@ use validator::Validate;
 use crate::error::app_error::AppError;
 
 pub mod auth;
+pub mod track;
+
 #[derive(Serialize)]
 struct Res<T: Serialize> {
     status: u16,
@@ -19,8 +21,8 @@ struct Res<T: Serialize> {
 }
 
 pub enum ApiResponse<T: Serialize> {
-    OK(T),
-    CREATED(T),
+    OK(Option<T>),
+    CREATED(Option<T>),
 }
 
 pub type ApiResult<T> = Result<ApiResponse<T>, AppError>;
@@ -33,7 +35,7 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
         };
         let body = Json(json!(Res {
             status: status.as_u16(),
-            data: Some(data)
+            data: data
         }));
         (status, body).into_response()
     }

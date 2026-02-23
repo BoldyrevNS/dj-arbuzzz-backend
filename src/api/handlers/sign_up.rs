@@ -45,7 +45,7 @@ async fn start(
         .sign_up_service
         .start_sign_up(payload)
         .await?;
-    Ok(ApiResponse::OK(res))
+    Ok(ApiResponse::OK(Some(res)))
 }
 
 #[utoipa::path(
@@ -64,7 +64,7 @@ async fn verify(
     ValidatedJSON(payload): ValidatedJSON<VerifyOTPRequest>,
 ) -> ApiResult<()> {
     state.services.sign_up_service.verify_otp(payload).await?;
-    Ok(ApiResponse::OK(()))
+    Ok(ApiResponse::OK(None))
 }
 
 #[utoipa::path(
@@ -83,7 +83,7 @@ async fn resend(
     ValidatedJSON(payload): ValidatedJSON<ResendOTPRequest>,
 ) -> ApiResult<ResendOTPResponse> {
     let res = state.services.sign_up_service.resend_otp(payload).await?;
-    Ok(ApiResponse::OK(res))
+    Ok(ApiResponse::OK(Some(res)))
 }
 
 #[utoipa::path(
@@ -106,5 +106,5 @@ async fn complete(
         .sign_up_service
         .sign_up_complete(payload)
         .await?;
-    Ok(ApiResponse::CREATED(()))
+    Ok(ApiResponse::CREATED(None))
 }

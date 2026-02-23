@@ -102,6 +102,12 @@ impl IntoResponse for AppError {
     }
 }
 
+impl From<diesel::result::Error> for AppError {
+    fn from(value: diesel::result::Error) -> Self {
+        AppError::Internal(anyhow::anyhow!(value.to_string()))
+    }
+}
+
 impl From<RedisError> for AppError {
     fn from(value: RedisError) -> Self {
         AppError::Internal(anyhow::anyhow!(value.to_string()))
