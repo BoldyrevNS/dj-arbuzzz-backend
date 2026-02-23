@@ -110,9 +110,12 @@ impl TrackService {
         self.playlist_service
             .add_new_track(PlaylistItem {
                 id: track.id,
+                song_id: track.song_id,
+                owner_id: track.owner_id,
                 artist: track.artist,
                 title: track.title,
                 duration_sec: track.duration_sec,
+                download_url: track.download_url,
             })
             .await?;
         Ok(())

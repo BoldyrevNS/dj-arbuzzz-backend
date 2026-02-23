@@ -6,12 +6,15 @@ use crate::{
     infrastucture::cache::{client::Cache, keys::AppCacheKey},
 };
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct PlaylistItem {
     pub id: i32,
+    pub song_id: i32,
+    pub owner_id: i32,
     pub artist: String,
     pub title: String,
     pub duration_sec: i32,
+    pub download_url: String,
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
@@ -50,6 +53,12 @@ impl PlaylistService {
             Err(_) => Playlist { items: vec![] },
         };
         let mut new_playlist = playlist;
+        if new_playlist.items.is_empty() {
+            return Err(crate::error::app_error::AppError::NotFound(
+                "Playlist is empty".to_string(),
+                None,
+            ));
+        }
         let item = new_playlist.items.remove(0);
         let playlist_str = serde_json::to_string(&new_playlist)?;
         let _: () = con.set(key, playlist_str).await?;

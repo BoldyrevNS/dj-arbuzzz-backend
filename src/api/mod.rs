@@ -16,7 +16,9 @@ use crate::{
             sign_up_service::SignUpService,
         },
         otp_service::OTPService,
+        player_service::PlayerService,
         playlist_service::PlaylistService,
+        radio_service::RadioService,
         smtp_service::SMTPService,
         token_service::TokenService,
         track_service::TrackService,
@@ -29,6 +31,7 @@ pub struct Services {
     pub auth_service: Arc<AuthService>,
     pub track_service: Arc<TrackService>,
     pub playlist_service: Arc<PlaylistService>,
+    pub radio_service: Arc<RadioService>,
 }
 
 pub struct AppState {
@@ -76,6 +79,13 @@ impl AppState {
             config.clone(),
         ));
 
+        let player_service = Arc::new(PlayerService::new(config.clone(), playlist_service.clone()));
+        let radio_service = RadioService::new(
+            playlist_service.clone(),
+            player_service.clone(),
+            config.clone(),
+        );
+
         let auth_service = Arc::new(AuthService::new(cache.clone(), users_repository.clone()));
 
         let services = Services {
@@ -84,6 +94,7 @@ impl AppState {
             auth_service,
             track_service,
             playlist_service,
+            radio_service,
         };
 
         AppState {

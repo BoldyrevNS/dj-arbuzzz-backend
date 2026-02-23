@@ -6,6 +6,7 @@ use crate::error::app_error::AppResult;
 use crate::{AppState, error::app_error::AppError};
 
 pub mod auth;
+pub mod radio;
 pub mod sign_up;
 pub mod track;
 
