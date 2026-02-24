@@ -72,16 +72,30 @@ http {
 
         location /.well-known/acme-challenge/ {
             root /var/www/certbot;
+            try_files \$uri =404;
         }
 
         location / {
-            return 200 'OK';
+            return 200 'Certbot verification server';
             add_header Content-Type text/plain;
         }
     }
 }
 EOF
+
+# Backup current nginx config
+if [ -f nginx/nginx.conf ]; then
+    cp nginx/nginx.conf nginx/nginx.conf.backup
+fi
+
 cp nginx/nginx.tmp.conf nginx/nginx.conf
+echo ""
+
+# Create test file to verify volume mounting
+echo "### Creating test challenge file..."
+mkdir -p certbot/www/.well-known/acme-challenge
+echo "test" > certbot/www/.well-known/acme-challenge/test
+chmod -R 755 certbot/www
 echo ""
 
 # Stop all services to release ports
@@ -96,14 +110,29 @@ echo ""
 
 # Wait for nginx to start
 echo "### Waiting for nginx to be ready..."
-sleep 10
+sleep 5
 
-# Test nginx is responding
-echo "### Testing nginx HTTP endpoint..."
-if docker-compose exec -T nginx wget -q -O- http://localhost/.well-known/acme-challenge/test 2>/dev/null; then
-    echo "✓ Nginx is responding"
+# Verify volume is mounted correctly
+echo "### Verifying certbot volume..."
+docker-compose exec nginx ls -la /var/www/certbot/.well-known/acme-challenge/ || echo "⚠ Challenge directory not found"
+echo ""
+
+# Test nginx is serving the test file
+echo "### Testing challenge file access..."
+if docker-compose exec -T nginx cat /var/www/certbot/.well-known/acme-challenge/test 2>/dev/null | grep -q "test"; then
+    echo "✓ Test file is accessible inside container"
 else
-    echo "⚠ Nginx test endpoint check (may be normal)"
+    echo "✗ Test file NOT accessible inside container"
+    exit 1
+fi
+
+# Test from localhost
+if docker-compose exec -T nginx wget -q -O- http://localhost/.well-known/acme-challenge/test 2>/dev/null | grep -q "test"; then
+    echo "✓ Nginx is serving challenge files correctly"
+else
+    echo "✗ Nginx is NOT serving challenge files"
+    docker-compose logs nginx | tail -20
+    exit 1
 fi
 echo ""
 
@@ -131,7 +160,16 @@ docker-compose run --rm --entrypoint "\
     -d $DOMAIN" certbot
 echo ""
 
-# Update nginx to production config
+# Check if certificate was obtained
+if [ -d "certbot/conf/live/$DOMAIN" ]; then
+    echo "✓ Certificate obtained successfully"
+else
+    echo "✗ Certificate was not obtained"
+    echo "Check the logs above for errors"
+    exit 1
+fi
+
+# Restore production nginx config or create it
 echo "### Updating nginx to production configuration..."
 export DOMAIN=$DOMAIN
 envsubst '${DOMAIN}' < nginx/nginx.prod.conf > nginx/nginx.conf
