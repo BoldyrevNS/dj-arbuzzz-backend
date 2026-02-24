@@ -42,17 +42,13 @@ services:
   migrations:
     build:
       context: ./server
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.migrations
     container_name: dj-arbuzzz-migrations
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-djarbuzzz}:${POSTGRES_PASSWORD:-djarbuzzz_password}@postgres:5432/${POSTGRES_DB:-djarbuzzz_db}
-    command: >
-      sh -c "apt-get update && apt-get install -y curl &&
-             curl -L https://github.com/diesel-rs/diesel/releases/download/v2.3.0/diesel_cli-v2.3.0-x86_64-unknown-linux-gnu.tar.gz | tar xz -C /usr/local/bin &&
-             diesel migration run --database-url=\$$DATABASE_URL"
     networks:
       - app-network
 

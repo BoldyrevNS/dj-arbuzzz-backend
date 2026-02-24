@@ -1,0 +1,23 @@
+# Migrations stage
+FROM rustlang/rust:nightly-slim
+
+# Install required dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install diesel_cli
+RUN cargo install diesel_cli --no-default-features --features postgres
+
+# Set working directory
+WORKDIR /app
+
+# Copy migrations and diesel config
+COPY migrations ./migrations
+COPY diesel.toml ./diesel.toml
+
+# Default command
+CMD ["diesel", "migration", "run"]
