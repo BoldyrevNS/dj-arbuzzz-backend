@@ -1,0 +1,83 @@
+name: ✨ Feature Request
+description: Предложить новую функцию
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за предложение новой функции! Пожалуйста, заполните форму ниже.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Описание проблемы
+      description: Какую проблему решит эта функция?
+      placeholder: Я всегда расстраиваюсь, когда...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Предлагаемое решение
+      description: Как вы видите решение этой проблемы?
+      placeholder: Я бы хотел...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Компонент
+      description: Какой компонент затронет эта функция?
+      options:
+        - Backend (Rust)
+        - Frontend (Nuxt)
+        - Docker
+        - CI/CD
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Приоритет
+      description: Насколько важна эта функция?
+      options:
+        - Low (Nice to have)
+        - Medium (Would improve experience)
+        - High (Critical for workflow)
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы
+      description: Какие альтернативные решения вы рассматривали?
+      placeholder: Я также думал о...
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Примеры
+      description: Есть ли примеры этой функции в других проектах?
+      placeholder: Например, в проекте X это реализовано так...
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Дополнительная информация
+      description: Любая другая информация о функции
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Готовность к реализации
+      description: Готовы ли вы помочь с реализацией?
+      options:
+        - label: Я готов реализовать эту функцию и отправить PR
+          required: false

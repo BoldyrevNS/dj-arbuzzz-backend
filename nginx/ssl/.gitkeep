@@ -1,0 +1,7 @@
+# SSL certificates directory
+# Add your SSL certificates here:
+# - cert.pem (certificate)
+# - key.pem (private key)
+
+# For development, run: ./scripts/generate-ssl.sh
+# For production, run: ./scripts/init-letsencrypt.sh

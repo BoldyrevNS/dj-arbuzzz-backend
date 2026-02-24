@@ -1,0 +1,92 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment || 'production' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'production' }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup SSH
+      uses: webfactory/ssh-agent@v0.9.0
+      with:
+        ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+    - name: Add server to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Copy files to server
+      run: |
+        rsync -avz --exclude '.git' \
+          --exclude 'node_modules' \
+          --exclude 'target' \
+          --exclude '.output' \
+          --exclude 'certbot' \
+          ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/
+
+    - name: Deploy application
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd ${{ secrets.DEPLOY_PATH }}
+
+          # Load environment variables
+          if [ -f .env ]; then
+            export $(cat .env | xargs)
+          fi
+
+          # Pull latest images if using registry
+          # docker-compose pull
+
+          # Build and restart services
+          docker-compose up -d --build --force-recreate
+
+          # Prune old images
+          docker image prune -af
+
+          # Show status
+          docker-compose ps
+
+    - name: Health check
+      run: |
+        sleep 30
+        response=$(curl -k -s -o /dev/null -w "%{http_code}" https://${{ secrets.SERVER_HOST }})
+        if [ $response -eq 200 ] || [ $response -eq 301 ] || [ $response -eq 302 ]; then
+          echo "✅ Deployment successful! Server is responding."
+        else
+          echo "❌ Deployment may have failed. Server returned: $response"
+          exit 1
+        fi
+
+    - name: Notify success
+      if: success()
+      run: |
+        echo "🚀 Deployment to ${{ inputs.environment || 'production' }} completed successfully!"
+
+    - name: Notify failure
+      if: failure()
+      run: |
+        echo "❌ Deployment to ${{ inputs.environment || 'production' }} failed!"

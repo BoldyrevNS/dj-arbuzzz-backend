@@ -1,0 +1,102 @@
+name: 🐛 Bug Report
+description: Сообщить об ошибке
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за сообщение об ошибке! Пожалуйста, заполните форму ниже.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание ошибки
+      description: Четкое и краткое описание проблемы
+      placeholder: Расскажите, что пошло не так
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Шаги для воспроизведения
+      description: Как воспроизвести ошибку
+      placeholder: |
+        1. Перейти на '...'
+        2. Нажать на '...'
+        3. Прокрутить до '...'
+        4. Увидеть ошибку
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+      description: Что должно было произойти
+      placeholder: Опишите ожидаемый результат
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Актуальное поведение
+      description: Что произошло на самом деле
+      placeholder: Опишите фактический результат
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Компонент
+      description: Какой компонент затронут?
+      options:
+        - Backend (Rust)
+        - Frontend (Nuxt)
+        - Docker
+        - CI/CD
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Окружение
+      description: Информация о вашем окружении
+      placeholder: |
+        - OS: [e.g. macOS 14, Ubuntu 22.04]
+        - Browser: [e.g. Chrome 120, Safari 17]
+        - Version: [e.g. v1.0.0]
+        - Docker version: [e.g. 24.0.7]
+      value: |
+        - OS:
+        - Browser:
+        - Version:
+        - Docker version:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Логи
+      description: Добавьте логи или сообщения об ошибках
+      placeholder: Вставьте логи здесь
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Скриншоты
+      description: Если применимо, добавьте скриншоты
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Дополнительная информация
+      description: Любая другая информация о проблеме

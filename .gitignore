@@ -1,0 +1,42 @@
+# SSL Certificates
+nginx/ssl/*.pem
+nginx/ssl/*.crt
+nginx/ssl/*.key
+
+# Let's Encrypt
+certbot/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Docker volumes data (optional, keep if you want to persist)
+# postgres_data/
+# redis_data/
+# songs_data/
+
+# GitHub Actions local testing
+.actrc
+act-results/
+
+# Temporary files
+*.tmp
+*.bak
+.temp/
+

@@ -1,0 +1,133 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Backend linting and formatting
+  backend:
+    name: Backend (Rust)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-registry-
+
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-index-
+
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: server/target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-build-target-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpq-dev pkg-config libssl-dev
+
+    - name: Check formatting
+      working-directory: ./server
+      run: cargo fmt -- --check
+
+    - name: Run clippy
+      working-directory: ./server
+      run: cargo clippy -- -D warnings
+
+    - name: Build backend
+      working-directory: ./server
+      run: cargo build --verbose
+
+  # Frontend linting
+  frontend:
+    name: Frontend (Nuxt)
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 9
+
+    - name: Get pnpm store directory
+      id: pnpm-cache
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+    - name: Setup pnpm cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    - name: Install dependencies
+      working-directory: ./client
+      run: pnpm install --frozen-lockfile
+
+    - name: Run linter
+      working-directory: ./client
+      run: pnpm run lint
+
+    - name: Build frontend
+      working-directory: ./client
+      run: pnpm run build
+
+  # Docker validation
+  docker:
+    name: Docker Validation
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Validate docker-compose
+      run: |
+        # Generate SSL certs for testing
+        mkdir -p nginx/ssl
+        openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+          -keyout nginx/ssl/key.pem \
+          -out nginx/ssl/cert.pem \
+          -subj "/C=RU/ST=Test/L=Test/O=Test/CN=localhost"
+
+        # Copy env example
+        cp .env.example .env
+
+        # Validate docker-compose
+        docker-compose config
