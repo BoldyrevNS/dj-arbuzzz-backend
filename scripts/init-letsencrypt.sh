@@ -112,9 +112,29 @@ echo ""
 echo "### Waiting for nginx to be ready..."
 sleep 5
 
+# Remove default config that conflicts
+echo "### Removing default nginx config..."
+docker-compose exec nginx rm -f /etc/nginx/conf.d/default.conf || true
+docker-compose exec nginx nginx -s reload
+sleep 2
+echo ""
+
+# Check nginx config syntax
+echo "### Checking nginx configuration..."
+if ! docker-compose exec nginx nginx -t; then
+    echo "✗ Nginx configuration has errors"
+    exit 1
+fi
+echo ""
+
 # Verify volume is mounted correctly
 echo "### Verifying certbot volume..."
 docker-compose exec nginx ls -la /var/www/certbot/.well-known/acme-challenge/ || echo "⚠ Challenge directory not found"
+echo ""
+
+# Check which config is loaded
+echo "### Checking loaded nginx config..."
+docker-compose exec nginx cat /etc/nginx/nginx.conf | head -20
 echo ""
 
 # Test nginx is serving the test file
