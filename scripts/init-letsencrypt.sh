@@ -138,12 +138,37 @@ else
     exit 1
 fi
 
-# Test from localhost
+# Test with curl from inside container
+echo "### Testing HTTP endpoint from inside container..."
+if docker-compose exec -T nginx wget -q -O- http://localhost/.well-known/acme-challenge/test 2>&1; then
+    echo "✓ Wget succeeded"
+else
+    echo "✗ Wget failed"
+fi
+echo ""
+
+# Check nginx error logs
+echo "### Checking nginx error logs..."
+docker-compose logs nginx 2>&1 | grep -i error | tail -10 || echo "No errors found"
+echo ""
+
+# Check nginx access logs
+echo "### Testing actual request..."
+docker-compose exec -T nginx sh -c 'wget -O- http://localhost/.well-known/acme-challenge/test 2>&1' || true
+echo ""
+
+# Final check
 if docker-compose exec -T nginx wget -q -O- http://localhost/.well-known/acme-challenge/test 2>/dev/null | grep -q "test"; then
     echo "✓ Nginx is serving challenge files correctly"
 else
-    echo "✗ Nginx is NOT serving challenge files"
-    docker-compose logs nginx | tail -20
+    echo "✗ Challenge file verification failed"
+    echo ""
+    echo "Debug information:"
+    echo "- Testing localhost:80 from inside container..."
+    docker-compose exec -T nginx wget -O- http://localhost/.well-known/acme-challenge/test 2>&1 || true
+    echo ""
+    echo "- Nginx processes:"
+    docker-compose exec nginx ps aux | grep nginx
     exit 1
 fi
 echo ""
