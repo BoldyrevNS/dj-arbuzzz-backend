@@ -45,16 +45,47 @@ docker-compose run --rm --entrypoint "\
     -subj '/CN=localhost'" certbot
 echo ""
 
-# Update nginx config to use production template
-echo "### Updating nginx configuration..."
-export DOMAIN=$DOMAIN
-envsubst '${DOMAIN}' < nginx/nginx.prod.conf > nginx/nginx.conf
+# Create temporary HTTP-only nginx config for certificate verification
+echo "### Creating temporary nginx configuration..."
+cat > nginx/nginx.tmp.conf << 'EOF'
+user nginx;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    server {
+        listen 80;
+        server_name _;
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+        }
+
+        location / {
+            return 200 'OK';
+            add_header Content-Type text/plain;
+        }
+    }
+}
+EOF
+cp nginx/nginx.tmp.conf nginx/nginx.conf
 echo ""
 
-# Start nginx
+# Start nginx with HTTP-only config
 echo "### Starting nginx..."
 docker-compose up --force-recreate -d nginx
 echo ""
+
+# Wait for nginx to start
+sleep 5
 
 # Delete dummy certificate
 echo "### Deleting dummy certificate for $DOMAIN..."
@@ -80,7 +111,13 @@ docker-compose run --rm --entrypoint "\
     -d $DOMAIN" certbot
 echo ""
 
-# Reload nginx
+# Update nginx to production config
+echo "### Updating nginx to production configuration..."
+export DOMAIN=$DOMAIN
+envsubst '${DOMAIN}' < nginx/nginx.prod.conf > nginx/nginx.conf
+echo ""
+
+# Reload nginx with production config
 echo "### Reloading nginx..."
 docker-compose exec nginx nginx -s reload
 echo ""
