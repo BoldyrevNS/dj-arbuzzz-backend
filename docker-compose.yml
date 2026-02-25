@@ -120,6 +120,7 @@ services:
     environment:
       NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-http://localhost:8080}
       NUXT_API_SECRET: ${NUXT_API_SECRET:-your-nuxt-secret}
+      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:-change-this-to-at-least-32-characters-long-secret}
       NODE_ENV: production
     networks:
       - app-network
