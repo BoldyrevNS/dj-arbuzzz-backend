@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
 	console.log('sign-up-start called');
 	const { email } = await readValidatedBody(event, bodySchema.parse);
 	const config = useRuntimeConfig(event);
-	
+
 	const url = `${config.public.apiBase}/sign-up/start`;
 	console.log('Calling backend URL:', url);
 
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
 			},
 			body: JSON.stringify({ email }),
 		});
-		
+
 		console.log('Backend response status:', res.status);
 
 		if (!res.ok) {

@@ -21,6 +21,7 @@ async function handleClick() {
 
 <style lang="scss" scoped>
 .index {
+  overflow: auto;
 	display: flex;
 	gap: 20px;
 	flex-direction: column;
