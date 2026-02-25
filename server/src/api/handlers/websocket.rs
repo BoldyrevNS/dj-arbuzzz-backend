@@ -2,15 +2,15 @@ use std::sync::Arc;
 
 use axum::{
     extract::{
-        State, WebSocketUpgrade,
         ws::{Message, WebSocket},
+        State, WebSocketUpgrade,
     },
     response::Response,
 };
 use futures::{SinkExt, StreamExt};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
-use crate::{AppState, dto::response::websocket::WebSocketMessage};
+use crate::{dto::response::websocket::WebSocketMessage, AppState};
 
 pub fn websocket_router(app_state: Arc<AppState>) -> OpenApiRouter {
     OpenApiRouter::new()
@@ -27,12 +27,12 @@ pub fn websocket_router(app_state: Arc<AppState>) -> OpenApiRouter {
     )
 )]
 async fn websocket_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> Response {
-    tracing::info!("WebSocket connection attempt");
+    println!("[WebSocket] Connection attempt");
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
 async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
-    tracing::info!("WebSocket connection established");
+    println!("[WebSocket] Connection established");
     let (mut sender, mut receiver) = socket.split();
 
     let mut rx = state.services.radio_service.subscribe_events();
