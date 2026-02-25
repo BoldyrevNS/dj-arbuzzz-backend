@@ -67,7 +67,7 @@ http {
     default_type application/octet-stream;
 
     server {
-        listen 80 default_server;
+        listen 0.0.0.0:80;
         server_name _;
 
         location /.well-known/acme-challenge/ {
