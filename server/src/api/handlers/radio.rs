@@ -5,18 +5,17 @@ use axum::{
     extract::State,
     response::Response,
 };
-use tokio_stream::{StreamExt, wrappers::BroadcastStream};
+use tokio_stream::{wrappers::BroadcastStream, StreamExt};
 use utoipa_axum::{router::OpenApiRouter, routes};
 
 use crate::{
+    dto::response::{raido::GetCurrentTrackResponse, ApiResponse, ApiResult},
     AppState,
-    dto::response::{ApiResponse, ApiResult, raido::GetCurrentTrackResponse},
 };
 
 pub fn radio_router(app_state: Arc<AppState>) -> OpenApiRouter {
     OpenApiRouter::new()
         .routes(routes!(stream_radio))
-        .routes(routes!(stream_radio_dfpwm))
         .routes(routes!(get_current_track))
         .with_state(app_state)
 }
@@ -45,29 +44,6 @@ async fn stream_radio(State(state): State<Arc<AppState>>) -> Response {
         .unwrap()
 }
 
-#[utoipa::path(
-    get,
-    path = "/stream-dfpwm",
-    tag = "Radio",
-    responses(
-        (status = 200, description = "Live audio stream in DFPWM format", content_type = "audio/dfpwm"),
-        (status = 503, description = "No tracks available yet")
-    )
-)]
-async fn stream_radio_dfpwm(State(state): State<Arc<AppState>>) -> Response {
-    let receiver = state.services.radio_service.subscribe_dfpwm();
-
-    let stream = BroadcastStream::new(receiver)
-        .filter_map(|result| result.ok().map(|bytes| Ok::<Bytes, Infallible>(bytes)));
-
-    Response::builder()
-        .status(200)
-        .header("Content-Type", "audio/dfpwm")
-        .header("Cache-Control", "no-cache, no-store")
-        .header("Transfer-Encoding", "chunked")
-        .body(Body::from_stream(stream))
-        .unwrap()
-}
 #[utoipa::path(
         get,
         path = "/current-track",
