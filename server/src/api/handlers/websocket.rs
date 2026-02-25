@@ -27,10 +27,12 @@ pub fn websocket_router(app_state: Arc<AppState>) -> OpenApiRouter {
     )
 )]
 async fn websocket_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> Response {
+    tracing::info!("WebSocket connection attempt");
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
 async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
+    tracing::info!("WebSocket connection established");
     let (mut sender, mut receiver) = socket.split();
 
     let mut rx = state.services.radio_service.subscribe_events();
