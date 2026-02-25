@@ -22,7 +22,7 @@ RUN mkdir src && \
 
 # Build dependencies (this layer will be cached)
 RUN cargo build --release && \
-    rm -rf src
+    rm -rf src target/release/backend-rust target/release/backend-rust.d
 
 # Copy actual source code
 COPY . .
