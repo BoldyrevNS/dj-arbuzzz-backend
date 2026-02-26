@@ -14,7 +14,7 @@ diesel = { version = "2.3.0", features = ["postgres", "chrono"] }
 dotenvy = "0.15"
 diesel-derive-enum = { version = "3.0.0-beta.1", features = ["postgres"] }
 anyhow = "1.0"
-thiserror = "1.0"
+thiserror = "2.0"
 tower-cookies = "0.11.0"
 mail-send = "0.5.2"
 redis = { version = "1.0.2", features = ["tokio-comp", "connection-manager"] }
