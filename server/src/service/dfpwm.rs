@@ -22,7 +22,8 @@ impl DfpwmEncoder {
         let mut bit_pos = 0;
 
         for &sample in input {
-            let target = (sample as i32) * 127;
+            // Scale 8-bit sample to encoder's working range (-32768..32767)
+            let target = (sample as i32) << 8; // * 256 для полного использования диапазона
 
             // Determine output bit
             let current_bit = target > self.charge;

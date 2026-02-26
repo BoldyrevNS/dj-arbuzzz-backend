@@ -102,10 +102,26 @@ async fn handle_dfpwm_stream(socket: WebSocket, state: Arc<AppState>) {
 
     // Send DFPWM audio chunks as binary messages
     let mut send_task = tokio::spawn(async move {
-        while let Ok(chunk) = rx.recv().await {
-            if sender.send(Message::Binary(chunk.into())).await.is_err() {
-                println!("[WebSocket DFPWM] Failed to send chunk, client disconnected");
-                break;
+        loop {
+            match rx.recv().await {
+                Ok(chunk) => {
+                    if sender.send(Message::Binary(chunk.into())).await.is_err() {
+                        println!("[WebSocket DFPWM] Failed to send chunk, client disconnected");
+                        break;
+                    }
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Lagged(skipped)) => {
+                    println!(
+                        "[WebSocket DFPWM] Client lagged, skipped {} chunks",
+                        skipped
+                    );
+                    // Продолжаем работу, пропуская отставшие чанки
+                    continue;
+                }
+                Err(tokio::sync::broadcast::error::RecvError::Closed) => {
+                    println!("[WebSocket DFPWM] Broadcast channel closed");
+                    break;
+                }
             }
         }
         println!("[WebSocket DFPWM] Send task terminated");

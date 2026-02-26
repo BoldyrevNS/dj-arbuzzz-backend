@@ -3,7 +3,7 @@ use std::{fs, sync::Arc, time::Instant};
 use axum::body::Bytes;
 use tokio::{
     io::AsyncReadExt,
-    sync::{Notify, RwLock, broadcast},
+    sync::{broadcast, Notify, RwLock},
 };
 
 use crate::{
@@ -19,6 +19,7 @@ use crate::{
 
 const CHUNK_MS: u64 = 100;
 const BROADCAST_CAPACITY: usize = 256;
+const DFPWM_BROADCAST_CAPACITY: usize = 2048; // Больше буфер для DFPWM (256 секунд @ 125ms/чанк)
 const WS_EVENT_CAPACITY: usize = 100;
 
 enum NextTrack {
@@ -55,7 +56,7 @@ impl RadioService {
         queue_notify: Arc<Notify>,
     ) -> Arc<Self> {
         let (sender, _) = broadcast::channel(BROADCAST_CAPACITY);
-        let (dfpwm_sender, _) = broadcast::channel(BROADCAST_CAPACITY);
+        let (dfpwm_sender, _) = broadcast::channel(DFPWM_BROADCAST_CAPACITY);
         let (ws_event_sender, _) = broadcast::channel(WS_EVENT_CAPACITY);
         let service = Arc::new(RadioService {
             sender,
@@ -289,7 +290,7 @@ impl RadioService {
 
     async fn stream_file_dfpwm(&self, file_path: &str, _bytes_per_sec: u64) -> AppResult<()> {
         use symphonia::core::audio::SampleBuffer;
-        use symphonia::core::codecs::{CODEC_TYPE_NULL, DecoderOptions};
+        use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
         use symphonia::core::formats::FormatOptions;
         use symphonia::core::io::MediaSourceStream;
         use symphonia::core::meta::MetadataOptions;
@@ -328,8 +329,8 @@ impl RadioService {
         let mut saved_spec = None;
         let mut resampled_buf = Vec::new();
 
-        let chunk_size = 6000; // ~125ms at 48kHz
-        let mut output_buffer = Vec::with_capacity(chunk_size);
+        let chunk_size = 6144; // 128ms at 48kHz (кратно 8 для DFPWM)
+        let mut output_buffer = Vec::with_capacity(chunk_size / 8);
 
         loop {
             let packet = match format.next_packet() {
@@ -372,7 +373,7 @@ impl RadioService {
                     samples.to_vec()
                 };
 
-                // Resample to 48kHz if needed
+                // Resample to 48kHz if needed using cubic interpolation
                 let target_rate = 48000;
                 let source_rate = spec.rate;
 
@@ -383,13 +384,34 @@ impl RadioService {
                         .map(|i| {
                             let pos = i as f32 / ratio;
                             let idx = pos as usize;
-                            if idx >= mono_samples.len() - 1 {
-                                mono_samples[mono_samples.len() - 1]
+                            let frac = pos - idx as f32;
+
+                            // Cubic (Catmull-Rom) interpolation для лучшего качества
+                            let len = mono_samples.len();
+                            if idx == 0 || idx >= len - 2 {
+                                // Граничные случаи: линейная интерполяция
+                                if idx >= len - 1 {
+                                    mono_samples[len - 1]
+                                } else {
+                                    let a = mono_samples[idx] as f32;
+                                    let b = mono_samples[idx + 1] as f32;
+                                    (a + (b - a) * frac) as i16
+                                }
                             } else {
-                                let frac = pos - idx as f32;
-                                let a = mono_samples[idx] as f32;
-                                let b = mono_samples[idx + 1] as f32;
-                                (a + (b - a) * frac) as i16
+                                // Cubic interpolation
+                                let y0 = mono_samples[idx - 1] as f32;
+                                let y1 = mono_samples[idx] as f32;
+                                let y2 = mono_samples[idx + 1] as f32;
+                                let y3 = mono_samples[idx + 2] as f32;
+
+                                let a0 = y3 - y2 - y0 + y1;
+                                let a1 = y0 - y1 - a0;
+                                let a2 = y2 - y0;
+                                let a3 = y1;
+
+                                let result =
+                                    a0 * frac * frac * frac + a1 * frac * frac + a2 * frac + a3;
+                                result.clamp(-32768.0, 32767.0) as i16
                             }
                         })
                         .collect()
@@ -397,9 +419,24 @@ impl RadioService {
                     mono_samples
                 };
 
-                // Convert to signed 8-bit
+                // Нормализация громкости для лучшего использования динамического диапазона
+                let max_amplitude = resampled.iter().map(|&s| s.abs()).max().unwrap_or(1) as f32;
+
+                let normalization_factor = if max_amplitude > 16384.0 {
+                    // Если сигнал слишком громкий, немного уменьшаем
+                    16384.0 / max_amplitude
+                } else if max_amplitude < 8192.0 && max_amplitude > 0.0 {
+                    // Если слишком тихий, немного увеличиваем (но не более чем в 2 раза)
+                    (16384.0 / max_amplitude).min(2.0)
+                } else {
+                    1.0
+                };
+
+                // Convert to signed 8-bit with proper scaling and dithering
                 for &sample in &resampled {
-                    let sample_8bit = (sample >> 8) as i8;
+                    // Применяем нормализацию и конвертируем i16 -> i8
+                    let normalized = (sample as f32 * normalization_factor) as i32;
+                    let sample_8bit = ((normalized + 128) / 256).clamp(-128, 127) as i8;
                     resampled_buf.push(sample_8bit);
                 }
 
