@@ -9,12 +9,6 @@ async function handleClick() {
 
 <template>
 	<div class="index">
-		<Button
-			stretched
-			@click="handleClick"
-		>
-			Выйти
-		</Button>
 		<PlayerWidget />
 	</div>
 </template>

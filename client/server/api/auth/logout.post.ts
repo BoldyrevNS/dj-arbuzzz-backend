@@ -4,7 +4,6 @@ export default defineEventHandler(async (event) => {
 
 	if (sessionCookie) {
 		try {
-			// Отправляем запрос на backend для удаления сессии
 			await fetch(`${config.public.apiBase}/auth/logout`, {
 				method: 'POST',
 				headers: {
@@ -18,7 +17,6 @@ export default defineEventHandler(async (event) => {
 		}
 	}
 
-	// Удаляем куку на клиенте
 	deleteCookie(event, 'x-authenticated');
 	await clearUserSession(event);
 

@@ -19,7 +19,7 @@ use crate::{
 
 const CHUNK_MS: u64 = 100;
 const BROADCAST_CAPACITY: usize = 256;
-const DFPWM_BROADCAST_CAPACITY: usize = 2048; // Больше буфер для DFPWM (256 секунд @ 125ms/чанк)
+const DFPWM_BROADCAST_CAPACITY: usize = 1024;
 const WS_EVENT_CAPACITY: usize = 100;
 
 enum NextTrack {
